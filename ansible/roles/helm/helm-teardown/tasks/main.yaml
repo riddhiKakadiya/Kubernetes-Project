@@ -1,0 +1,10 @@
+- debug:
+   msg: "Starting Notebook to uninstall Tiller from the k8s cluster"
+
+- name: Uninstalling Tiller from k8s cluster
+  shell: helm reset --force
+
+- name: Deleting the service account and ClusterBinding created for Tiller
+  shell: kubectl delete -f rbac-config.yaml
+  args:
+   chdir: "{{role_path}}/files"

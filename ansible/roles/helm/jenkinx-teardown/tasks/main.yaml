@@ -1,0 +1,24 @@
+# teardown Jenkins in Kubernetes cluster
+- debug:
+     msg: "Starting Notebook to teardown jenkinx"
+
+- name: Command to helm purge Jenkins
+  shell: helm delete --purge jx
+
+# - name: Command to delete deployment 
+#   shell: kubectl delete deployment jenkins-pv-volume --namespace=jx
+
+- name: Command to delete Jenkins Kubernetes Secret - jenkins-credentials 
+  shell: kubectl delete secret jenkins-credentials --namespace jx
+
+- name: Command to delete Jenkins Kubernetes Secret - jenkins-secrets
+  shell: kubectl delete secret jenkins-secrets --namespace jx
+
+- name: Command to delete Jenkins cluster role binding
+  shell: kubectl delete clusterrolebinding jenkins-jx-role-binding
+
+- name: Command to delete Jenkins namespace jx
+  shell: kubectl delete namespace jx
+
+- name: Command to delete persistent volume
+  shell: kubectl delete PersistentVolume jenkins-pv-volume --namespace=jx

@@ -1,0 +1,9 @@
+/ansible/roles/app-setup/files/mysecrets.yaml
+/ansible/roles/helm/fluentd-setup/files/fluentdsecrets.yaml
+/ansible/roles/helm/fluentd-setup/vars/mysecrets.yaml
+/ansible/roles/helm/oath2-setup/vars/mysecrets.yaml
+/ansible/roles/helm/jenkinx-setup/vars/credentials.xml
+/ansible/roles/helm/jenkinx-setup/vars/hudson.util.Secret
+/ansible/roles/helm/jenkinx-setup/vars/master.key
+/ansible/roles/helm/cluster-autoscaler-setup/files/cluster.yaml
+

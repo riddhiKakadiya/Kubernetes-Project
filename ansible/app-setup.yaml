@@ -1,0 +1,11 @@
+---
+- name: "Deploy replica sets"
+  hosts: localhost
+  connection: local
+  roles:
+    - k8-dashboard-setup
+    - elastic-search-setup
+    - app-setup
+    - helm/jenkinx-setup
+    - helm/nginx-setup
+    - app-hpa-setup

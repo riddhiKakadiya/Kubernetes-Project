@@ -1,0 +1,21 @@
+---
+
+- name: Get all vpc peers with specific filters
+  ec2_vpc_peering_facts:
+   region: "{{ region }}"
+   filters:
+    "tag:peer-conn": "k8-to-default-rds"
+    status-code: ['active']
+  register: pending_vpc_peers
+
+- debug:
+   msg: "Pending VPC peers : {{ pending_vpc_peers.result }}"
+
+- name: delete a local VPC peering Connection
+  ec2_vpc_peer:
+   region: "{{ region }}"
+   peering_id: "{{item.vpc_peering_connection_id}}"
+   state: absent
+  register: vpc_peer 
+  with_items:
+      - "{{ pending_vpc_peers.result }}"

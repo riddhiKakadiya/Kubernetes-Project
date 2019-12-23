@@ -1,0 +1,38 @@
+# Oauth client configuration specifics  
+config:  
+  # OAuth client ID  
+  clientID: "<CLIENT_ID>"  
+  # OAuth client secret  
+  clientSecret: "<CLIENT_SECRET>"  
+  # Create a new secret with the following command  
+  # python -c 'import os,base64; print base64.b64encode(os.urandom(16))'  
+  cookieSecret: "<Run the python command above and generate>"
+  # Custom configuration file see https://github.com/bitly/oauth2_proxy/blob/master/contrib/oauth2_proxy.cfg.example
+  configFile: |-  
+    ## Pass OAuth Access token to upstream via "X-Forwarded-Access-Token"
+    pass_access_token = true
+    #upstreams = [  
+    #    "https://kubernetes-dashboard:8443/"  
+    #]  
+
+extraArgs:  
+  provider: "github"  
+  # limit access to members of a github organisation:
+  github-org: "<Github Org name>"
+  #email-domain: "*"  
+  upstream: "file:///dev/null"  
+  http-address: "0.0.0.0:4180"  
+
+ingress:  
+ enabled: true  
+ path: /oauth2  
+ hosts:  
+  - <Your Domain name>
+ annotations:  
+  kubernetes.io/ingress.class: nginx  
+  certmanager.k8s.io/issuer: letsencrypt
+ tls:  
+ # certmanager will use the letsencrypt issues to create the TLS secret in the namespace if they don't exist
+ - secretName: csye7374-team2-tls  
+   hosts:  
+    - <Your Domain name>

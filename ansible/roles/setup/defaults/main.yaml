@@ -1,0 +1,9 @@
+aws_profile: dev
+user_name: kops_user
+group_name: kops_group
+kubernetes_version : 1.14.6
+master_size : c4.large
+master_count: 3
+node_size : t2.medium
+compute_node_count: 1
+

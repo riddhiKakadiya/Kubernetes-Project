@@ -1,0 +1,101 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook to insatll jenkinx"
+
+- name: Command to create persistent volume
+  shell: kubectl apply -f pv_pvc.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Create kubernetes secret which stores the master key and secret for decryption
+  shell: kubectl create secret generic jenkins-secrets --namespace=jx --from-file=master.key --from-file=hudson.util.Secret
+  args:
+    chdir: "{{role_path}}/vars"
+
+- name: Command to create persistent volume
+  shell: kubectl create secret generic jenkins-credentials --namespace=jx --from-file=credentials.xml
+  args:
+    chdir: "{{role_path}}/vars"
+
+
+
+
+
+
+- name: Command to replace the image name based on the user running the script
+  shell: sed -i  's|cloud9_github_user|{{ github_username }}|g' jenkins_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+  when: 'local_machine in "fedora" '
+
+- name: Command to replace the image name based on the user running the script
+  shell: sed -i  "" "s|cloud9_github_user|{{ github_username }}|g" jenkins_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+  when: 'local_machine in "mac" '
+
+
+- name: Command to replace the image name based on the user running the script
+  shell: sed -i  's|cloud9_github_branch|{{ branch_github }}|g' jenkins_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+  when: 'local_machine in "fedora" '
+
+- name: Command to replace the image name based on the user running the script
+  shell: sed -i  "" "s|cloud9_github_branch|{{ branch_github }}|g" jenkins_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+  when: 'local_machine in "mac" '
+
+
+
+- name: Command to insatll jenkinx
+  shell: |
+    helm install --name jx -f jenkins_config.yaml --namespace jx \
+    --set persistence.existingClaim=jenkins-pv-claim \
+    --set agent.envVars[0].name="registry_frontend" \
+    --set agent.envVars[0].value="{{ docker_username }}/f19-t2-webapp-frontend" \
+    --set agent.envVars[1].name="registry_backend" \
+    --set agent.envVars[1].value="{{ docker_username }}/f19-t2-webapp-backend" \
+    --set agent.envVars[2].name="un_github" \
+    --set agent.envVars[2].value="{{ github_username }}" \
+    --set agent.envVars[3].name="un_dockerhub" \
+    --set agent.envVars[3].value="{{ docker_username }}" \
+    --set agent.envVars[4].name="branch_github" \
+    --set agent.envVars[4].value="{{ branch_github }}" \
+    stable/jenkins
+  args:
+    chdir: "{{role_path}}/files"
+
+    
+
+
+- name: Command to replace the image name based on the user running the script
+  shell: sed -i  's|{{ github_username }}|cloud9_github_user|g' jenkins_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+  when: 'local_machine in "fedora" '
+
+- name: Command to replace the image name based on the user running the script
+  shell: sed -i  "" "s|{{ github_username }}|cloud9_github_user|g" jenkins_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+  when: 'local_machine in "mac" '
+
+- name: Command to replace the image name based on the user running the script
+  shell: sed -i  's|{{ branch_github }}|cloud9_github_branch|g' jenkins_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+  when: 'local_machine in "fedora" '
+
+- name: Command to replace the image name based on the user running the script
+  shell: sed -i  "" "s|{{ branch_github }}|cloud9_github_branch|g" jenkins_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+  when: 'local_machine in "mac" '
+
+
+
+
+- name: Command to create role binding for jenkins
+  shell: kubectl create clusterrolebinding jenkins-jx-role-binding --clusterrole=cluster-admin --user=system:serviceaccount:jx:default --namespace jx

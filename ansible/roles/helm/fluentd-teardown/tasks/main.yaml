@@ -1,0 +1,11 @@
+---
+
+- debug:
+   msg: "Starting role to teardown fluentd"
+
+- name: Uninstall/delete fluentd deployement
+  shell: helm delete --purge fluentd
+
+- name: Command to delete fluentd namespace
+  shell: kubectl delete namespace fluentd
+

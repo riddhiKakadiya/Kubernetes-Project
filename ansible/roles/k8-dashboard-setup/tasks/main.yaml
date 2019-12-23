@@ -1,0 +1,15 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook to insatll k8 dashboard"
+
+- name: Command to insatll Dashboard
+  shell: kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta4/aio/deploy/recommended.yaml
+
+- name: Command to Creating Service Account
+  shell: kubectl create serviceaccount dashboard -n default
+
+- name: Command to Creating Cluster Binding
+  shell: |
+    kubectl create clusterrolebinding dashboard-admin -n default \
+    --clusterrole=cluster-admin \
+    --serviceaccount=default:dashboard

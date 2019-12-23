@@ -1,0 +1,15 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook to teardown elastic search"
+
+- name: Command to delete namespace
+  shell: kubectl delete service elasticsearch
+
+- name: Command to delete namespace
+  shell: kubectl delete replicationcontrollers es
+
+- name: Command to delete namespace
+  shell: kubectl delete serviceaccounts elasticsearch
+
+
+

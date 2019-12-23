@@ -1,0 +1,5 @@
+- debug:
+    msg: "Starting role to teardown Cluster Autoscaler"
+
+- name: Deleting the helm chart for cluster autoscaler
+  shell: helm delete --purge cluster-autoscaler

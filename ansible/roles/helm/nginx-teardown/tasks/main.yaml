@@ -1,0 +1,30 @@
+# Setup of ingress nginx controller
+- debug:
+     msg: "Starting Notebook to insatll nginx-ingress"
+
+- name: Delete api ingress
+  shell: kubectl delete ingress app-ingress-api --namespace=api
+
+- name: Delete ui ingress
+  shell: kubectl delete ingress app-ingress-ui --namespace=ui
+
+- name: Delete clusterissuer
+  shell: kubectl delete ClusterIssuer letsencrypt-prod 
+
+- name: Delete helm cert-manager
+  shell: helm del --purge cert-manager
+
+- name: Delete cert-manager manifest
+  shell: kubectl delete -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/deploy/manifests/00-crds.yaml
+
+
+- name: Delete cert-manager namespace
+  shell: kubectl delete namespace cert-manager
+
+- name: Delete helm ingress
+  shell: helm del --purge ingress
+  
+
+
+
+

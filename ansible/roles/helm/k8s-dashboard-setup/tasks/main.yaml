@@ -1,0 +1,10 @@
+- debug:
+     msg: "Starting Notebook to insatll k8 dashboard"
+
+# - name: Command to install nginx-ingress
+#   shell: helm install --name ingress stable/nginx-ingress --set controller.hostNetwork=true,controller.kind=DaemonSet
+
+- name: Command to install Dashboard
+  shell: helm install --namespace=kube-system stable/kubernetes-dashboard -f values.yaml
+  args:
+    chdir: "{{role_path}}/files"

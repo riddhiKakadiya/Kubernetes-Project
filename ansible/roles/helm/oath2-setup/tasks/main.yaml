@@ -1,0 +1,38 @@
+---
+- debug:
+     msg: "Starting Notebook to insatll oath2-Proxy"
+
+- name: Include external vars
+  include_vars:
+    file: vars/mysecrets.yaml
+    name: mysecrets
+
+- name: Command to create secret for dashboard
+  shell: "kubectl create secret generic dashboard-proxy-secret \
+          -o yaml --dry-run \
+          -n kube-system \
+          --from-literal=client-id={{ mysecrets.client_id}} \
+          --from-literal=client-secret={{ mysecrets.client_secret}} \
+          --from-literal=cookie=$(openssl rand 16 -hex) > {{role_path}}/files/dashboard-proxy-secret.yaml
+          "
+
+- name: Command to apply secret for dashboard
+  shell: kubectl apply -f dashboard-proxy-secret.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+# - name: Command to install oath2-Proxy
+#   shell: helm install stable/oauth2-proxy --namespace=kube-system -f values.yaml --name=k8s-dash-oauth2
+#   args:
+#     chdir: "{{role_path}}/files"
+
+- name: Installing oath2-Proxy
+  shell: "helm install --name k8s-dash-oauth2 \
+          -f values.yaml \
+          --namespace kube-system \
+          --set config.clientID={{ mysecrets.client_id}} \
+          --set config.clientSecret={{ mysecrets.client_secret}} \
+          stable/oauth2-proxy
+          "
+  args:
+    chdir: "{{role_path}}/files"

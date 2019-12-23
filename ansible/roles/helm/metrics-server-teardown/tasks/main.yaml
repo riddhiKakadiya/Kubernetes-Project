@@ -1,0 +1,6 @@
+- debug:
+     msg: "Starting Notebook to delete Metrics"
+
+- name: Command to install Metrics Dashboard
+  shell: |
+    helm del --purge metrics-server 

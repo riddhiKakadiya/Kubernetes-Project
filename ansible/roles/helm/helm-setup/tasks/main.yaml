@@ -1,0 +1,21 @@
+---
+- debug:
+     msg: "Starting Notebook to install Helm on the k8s cluster"
+
+- name: Command to create Service account
+  shell: kubectl create -f rbac-config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Command to install initialize Helm
+  shell: helm init --service-account tiller --history-max 200
+
+- name: Validating tiller
+  command: helm version
+  register: result
+  until: result.stdout.find("Server") != -1
+  retries: 3
+  delay: 10
+
+- name: Enable Incubator Repositories
+  command: helm repo add incubator https://kubernetes-charts-incubator.storage.googleapis.com/

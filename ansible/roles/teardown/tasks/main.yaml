@@ -1,0 +1,6 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Attempting to delete the Kubernetes cluster : {{ cluster_name }}"
+- name: Deleting the Kubernetes Cluster using kops
+  command: "kops delete cluster --name {{ cluster_name }} --state s3://{{s3_bucket}} --yes"
+

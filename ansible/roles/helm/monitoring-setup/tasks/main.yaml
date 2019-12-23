@@ -1,0 +1,45 @@
+- debug:
+   msg: "Starting Notebook to install and setup Prometheus and Grafana on the k8s cluster"
+
+- name: Command to create the namespace for Monitoring tools
+  shell: kubectl create -f create_namespace.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Command to install Prometheus
+  shell: helm install --name prometheus --namespace monitoring stable/prometheus -f values.yaml
+  args:
+    chdir: "{{role_path}}/files/prometheus"
+
+- name: Command to add Prometheus as a datasource to Grafana
+  shell: kubectl apply -f config.yml
+  args:
+    chdir: "{{role_path}}/files/grafana" 
+
+- name: Command to install the elastic-search exporter chart with the release name elasticsearch
+  shell: helm install --name elasticsearch-monitoring --namespace monitoring stable/elasticsearch-exporter -f values.yaml
+  args:
+    chdir: "{{role_path}}/files/elastic-search" 
+
+- name: Command to add the Kubernetes dashboard to Grafana
+  shell: kubectl apply -f kubernetes-cluster-prometheus.yml
+  args:
+    chdir: "{{role_path}}/files/grafana"
+
+- name: Command to create persistent volumn
+  shell: kubectl apply -f pv_config.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Command to install Grafana
+  shell: helm install stable/grafana \
+    -f values.yml \
+    --namespace monitoring \ 
+    --name grafana \ 
+    --set persistence.enabled=true
+    --set persistence.type=pvc
+    --set persistence.size=3Gi
+    --set persistence.existingClaim=grafana-pv-claim
+  args:
+    chdir: "{{role_path}}/files/grafana"
+

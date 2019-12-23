@@ -1,0 +1,10 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook to delete HPA to API and UI servers"
+
+- name: Command to delete HPA to API server
+  shell: kubectl delete hpa backend -n api
+
+- name: Command to delete HPA to UI server
+  shell: kubectl delete hpa frontend -n ui
+

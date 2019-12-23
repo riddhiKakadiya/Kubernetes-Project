@@ -1,0 +1,69 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook to deploy application in kubernetes"
+
+- name: Command to create Service account
+  shell: kubectl create -f create_namespace.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Creating rbac roles
+  shell: kubectl apply -f rbac.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Creating secrets
+  shell: kubectl apply -f mysecrets.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+#Getting RDS instance facts to be passed to the backend app
+- name: Gathering facts about AWS RDS instance using tags
+  rds_instance_facts:
+   db_instance_identifier: csye7374-backend
+  register: database_facts
+  when: 'django_profile in "cloud" '
+
+- debug:
+   msg: "RDS Instance host URL : {{ database_facts.instances[0].endpoint.address }}"
+  when: 'django_profile in "cloud" '
+
+- name: Command to create secret for ui namespace
+  shell: |
+    kubectl create secret docker-registry regcred \
+    --docker-server=docker.io \
+    --docker-username={{ docker_username }} \
+    --docker-password={{ docker_password }} \
+    --docker-email={{ docker_email }} \
+    --namespace=ui
+- name: Command to create secret for api namespace
+  shell: |
+    kubectl create secret docker-registry regcred \
+    --docker-server=docker.io \
+    --docker-username={{ docker_username }} \
+    --docker-password={{ docker_password }} \
+    --docker-email={{ docker_email }} \
+    --namespace=api
+- name: Command to add configmap
+  shell: |
+    kubectl create configmap special-config \
+    --namespace=api \
+    --from-literal=django_profile={{django_profile}} \
+    --from-literal=mariadb_host={{ database_facts.instances[0].endpoint.address }} \
+    --from-literal=mariadb_port=3306 \
+    --from-literal=attachments_bucket_name={{ s3_bucket_name }} #passed as CLI argument
+  when: 'django_profile in "cloud" '
+
+- name: Command to add configmap
+  shell: |
+    kubectl create configmap special-config \
+    --namespace=api \
+    --from-literal=django_profile={{django_profile}} \
+    --from-literal=mariadb_host=local \
+    --from-literal=mariadb_port=3306 \
+    --from-literal=attachments_bucket_name={{ s3_bucket_name }} #Do we need this?
+  when: 'django_profile in "test" '
+ 
+
+- name: Deploy Web Application
+  shell: "helm install ./roles/app-setup --name=f19-t2-webapp-chart --namespace=f19-t2-webapp-namespace --set image_backend.repository={{docker_username}}/f19-t2-webapp-backend --set image_backend.tag=latest --set image_frontend.repository={{docker_username}}/f19-t2-webapp-frontend --set image_frontend.tag=latest"

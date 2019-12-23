@@ -1,0 +1,34 @@
+---
+
+# Get facts about an instance
+# - rds_instance_facts:
+#     filters:
+#       "tag:dbinfo" : recipedb      
+#   register: rds_instance_facts
+
+# - debug:
+#    msg: "RDS Instance facts: {{ rds_instance_facts }}"
+
+- rds:
+   command: delete
+   region: "{{ region }}"
+   instance_name: csye7374-backend
+   wait: yes
+   wait_timeout: 72000 #Setting the timeout to 20 minutes
+  
+# Gather facts about all security groups in a specific VPC
+- ec2_group_facts:
+   filters:
+    "tag:db-group": rds-sg
+  register: rds_sg_facts
+
+- debug:
+   msg: "RDS SG facts: {{ rds_sg_facts }}"
+
+- name: "Delete group by its id"
+  ec2_group:
+   region: "{{ region }}"
+   group_id: "{{ item.group_id }}"
+   state: absent
+  with_items:
+   - "{{ rds_sg_facts.security_groups }}"

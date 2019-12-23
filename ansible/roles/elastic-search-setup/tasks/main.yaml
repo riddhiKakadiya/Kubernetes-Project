@@ -1,0 +1,19 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook to setup elastic search"
+
+
+- name: Command to create Service account
+  shell: kubectl create -f service-account.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Command ot create load balancer
+  shell: kubectl create -f es-svc.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Updating Kubectl to skip tls verification
+  shell: kubectl create -f es-rc.yaml
+  args:
+    chdir: "{{role_path}}/files"

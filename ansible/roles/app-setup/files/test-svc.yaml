@@ -1,0 +1,65 @@
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: ui
+
+# ---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ui-svc1
+  namespace: ui
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ui
+  name: ui-role-test
+rules:
+  - apiGroups: [""] # "" indicates the core API group
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: ui
+  name: ui-role-binding-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ui-role-test
+subjects:
+  - kind: ServiceAccount
+    name: ui-svc1
+    namespace: ui
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubectl-test-commands
+  namespace: ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp-backend
+  template:
+    metadata:
+      labels:
+        app: webapp-backend
+    spec:
+      serviceAccountName: ui-svc1
+      containers:
+        - name: frontend-app
+          image: lachlanevenson/k8s-kubectl:v1.8.8
+          command:
+          - sleep
+          - "10000"
+      

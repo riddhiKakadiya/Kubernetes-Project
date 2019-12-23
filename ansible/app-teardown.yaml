@@ -1,0 +1,9 @@
+---
+- name: "Deploy replica sets"
+  hosts: localhost
+  connection: local
+  roles:
+    - helm/nginx-teardown
+    - helm/jenkinx-teardown
+    - app-teardown
+    - elastic-search-teardown

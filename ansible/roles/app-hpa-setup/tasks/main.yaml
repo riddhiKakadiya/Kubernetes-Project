@@ -1,0 +1,10 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook to add HPA to API and UI servers"
+
+- name: Command to add HPA to API server
+  shell: kubectl autoscale deployment backend -n api --cpu-percent=5 --min=1 --max=2 
+
+- name: Command to add HPA to UI server
+  shell: kubectl autoscale deployment frontend -n ui --cpu-percent=5 --min=1 --max=2 
+

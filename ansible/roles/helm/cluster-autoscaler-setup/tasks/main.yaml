@@ -1,0 +1,43 @@
+- debug:
+    msg: "Starting role to create the Cluster AutoScaler using Stable Helm Chart - cluster-autoscaler"
+
+- name: Editing the instance groups config using kops
+  shell: |
+    kops get ig nodes -oyaml --state=s3://{{ cluster_name}} > nodes.yaml
+    yq w -i nodes.yaml spec.cloudLabels[k8s.io/cluster-autoscaler/enabled] '""'
+    yq w -i nodes.yaml spec.cloudLabels[k8s.io/cluster-autoscaler/{{ cluster_name}}] '""'
+    yq w -i nodes.yaml spec.maxSize {{ asg_max_size }}
+    yq w -i nodes.yaml spec.minSize {{ asg_min_size }}
+    kops replace ig nodes --state=s3://{{ cluster_name}} -f nodes.yaml
+    rm nodes.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Editing the cluster config using kops
+  shell: |
+    kops get cluster -oyaml --state=s3://{{ cluster_name}} > cluster.yaml
+    yq m -i cluster.yaml additionalPoliciesForNodes.yaml
+    kops replace cluster --state=s3://{{ cluster_name}} -f cluster.yaml
+    rm cluster.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Updating the cluster and performing a rolling restart
+  shell: |
+    kops update cluster --state=s3://{{ cluster_name}} --yes
+    kops rolling-update cluster --state=s3://{{ cluster_name}}
+
+
+- name: Creating the Cluster Autoscaler
+  shell: helm install --name cluster-autoscaler \
+    --namespace kube-system \
+    --set autoDiscovery.clusterName={{ cluster_name }} \
+    --set rbac.create=true \
+    --set rbac.pspEnabled=true \
+    --set awsRegion={{ region }} \
+    --set cloudProvider=aws \
+    stable/cluster-autoscaler
+  retries: 3
+  delay: 10
+  register: result
+  until: result.rc == 0

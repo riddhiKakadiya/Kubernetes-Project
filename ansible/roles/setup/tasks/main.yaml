@@ -1,0 +1,128 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook"
+
+- aws_az_facts:
+  register : az_facts
+
+- debug:
+    msg: "AZ_FACTS : {{az_facts}}"
+
+- name: Build a list of all the availability zone names.
+  set_fact:
+    av_zones: "{{ av_zones }} + [ '{{ item.zone_name }}' ]"
+  with_items: "{{ az_facts.availability_zones }}"
+
+- set_fact: 
+   master_zones: "{{av_zones[0]}}"
+  when: "{{az_facts.availability_zones|length}}<3"
+
+- set_fact: 
+   master_zones: "{{ av_zones[:3]|join(',')}}"
+  when: "{{az_facts.availability_zones|length}}>=3"
+
+- debug:
+   msg: "master_zones value is : {{ master_zones }}"
+
+- set_fact:
+   master_node_count: 3
+  when: "{{az_facts.availability_zones|length}}>=3"
+
+- debug:
+   msg: "master_node_count value is : {{ master_node_count }}"
+
+- set_fact:
+   compute_node_count: "{% if compute_node_count | int < 3 %}3{% else %}{% endif %}"
+  when: "{{az_facts.availability_zones|length}}>=3"
+
+- debug:
+   msg: "compute_node_count value is : {{ compute_node_count }}"
+
+- set_fact:
+   available_zones: "{{ av_zones[:]|join(',')}}"
+
+- debug:
+   msg: "available_zones value is : {{ available_zones }}"
+
+- name: Create Cluster Config
+  command: >
+    kops create cluster
+    --kubernetes-version {{kubernetes_version}}
+    --zones "{{master_zones}}"
+    --master-zones "{{master_zones}}"
+    --topology private
+    --networking amazon-vpc-routed-eni
+    --dns private
+    --dns-zone {{dns_zone_id}}
+    --node-count=3
+    --master-count={{master_node_count}}
+    --master-size={{master_size}}
+    --node-size={{node_size}}
+    --state=s3://{{bucket_name}}
+    --ssh-public-key={{ssh_key_name}}.pub
+    --network-cidr={{k8s_cidr_block}}
+    --bastion
+    {{cluster_name}} 
+
+# - name: Create Cluster Config
+#   command: >
+#     kops create cluster
+#     --kubernetes-version {{kubernetes_version}}
+#     --zones "us-east-1a"
+#     --master-zones "us-east-1a"
+#     --topology private
+#     --networking amazon-vpc-routed-eni
+#     --dns private
+#     --dns-zone {{dns_zone_id}}
+#     --node-count=1
+#     --master-count=1
+#     --master-size=t2.medium
+#     --node-size=t2.medium
+#     --state=s3://{{bucket_name}}
+#     --ssh-public-key={{ssh_key_name}}.pub
+#     --network-cidr={{k8s_cidr_block}}
+#     --bastion
+#     {{cluster_name}} 
+# Alternate create cluster command to start nodes in all 
+# available AZs instead of the ones where we havev a Master node
+# - name: Create Cluster
+#   command: >
+#     kops create cluster
+#     --kubernetes-version {{kubernetes_version}}
+#     --zones "{{available_zones}}"
+#     --master-zones "{{master_zones}}"
+#     --topology private
+#     --networking amazon-vpc-routed-eni
+#     --dns private
+#     --dns-zone {{dns_zone_id}}
+#     --node-count={{compute_node_count}}
+#     --master-count={{master_node_count}}
+#     --master-size={{master_size}}
+#     --node-size={{node_size}}
+#     --state=s3://{{bucket_name}}
+#     --ssh-public-key={{ssh_public_key}}
+#     --bastion
+#     {{cluster_name}} 
+
+- name: Creating updated Cluster
+  command: kops update cluster {{cluster_name}} --yes --state=s3://{{bucket_name}}
+
+- name: Updating Kubectl to skip tls verification
+  command: kubectl config set-cluster "{{cluster_name}}" --insecure-skip-tls-verify=true
+
+- name: Verify that all Kubernetes nodes are ready
+  shell: "kops validate cluster --name {{ cluster_name }} --state=s3://{{bucket_name}}"
+  register: cmd_result
+  until: cmd_result.stdout.find('Your cluster ' + cluster_name + ' is ready') != -1
+  retries: 20
+  delay: 60
+
+# - name: Fetch Bastion Host API URL using aws cli command
+- shell: aws elb --output=table describe-load-balancers|grep DNSName.\*bastion|awk '{print $4}'
+  register: bastion_api
+
+- name: Testing SSH connection to Bastion host
+  shell: |
+   ssh  -o "StrictHostKeyChecking no" -i {{ssh_key_name}} admin@{{bastion_api.stdout}}
+- debug:
+   msg: "Successfully SSH into Bastion host"

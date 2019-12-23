@@ -1,0 +1,13 @@
+---
+- name: "Setup kubernetes cluster using kops"
+  hosts: localhost
+  connection: local
+  roles:
+    - setup
+    - vpc-peering-setup
+    - rds-setup
+    - helm/helm-setup
+    - helm/fluentd-setup
+    - helm/monitoring-setup
+    - helm/metrics-server-setup
+    - helm/cluster-autoscaler-setup

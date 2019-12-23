@@ -1,0 +1,13 @@
+---
+- name: Deleting the Kubernetes Cluster using kops
+  hosts: localhost
+  connection: local
+  roles:
+    - rds-teardown
+    - vpc-peering-teardown
+    - helm/fluentd-teardown
+    - helm/monitoring-teardown
+    - helm/metrics-server-teardown
+    - helm/cluster-autoscaler-teardown
+    - helm/helm-teardown
+    - teardown

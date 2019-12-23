@@ -1,0 +1,116 @@
+---
+
+- name: Check for default vpc 
+  ec2_vpc_net_facts:
+   region: "{{ region }}"
+   filters:
+    "tag:Name": "default" 
+  register: default_vpc_net_facts_results
+
+- debug:
+   msg: "Defaulr VPC facts: {{ default_vpc_net_facts_results }}"
+
+- name: Getting the VPC with the RDS instance
+  set_fact:
+   default_vpc_id: "{{item.vpc_id}}"
+  with_items:
+   - "{{ default_vpc_net_facts_results.vpcs }}"
+
+- name: Check for K8s vpc 
+  ec2_vpc_net_facts:
+   region: "{{ region }}"
+   filters:
+    "tag:Name": "{{cluster_name}}" 
+  register: k8s_vpc_net_facts_results
+
+- debug:
+   msg: "Kubernetes VPC facts: {{ k8s_vpc_net_facts_results }}"
+
+- name: Getting the K8s Cluster VPC
+  set_fact:
+   k8s_vpc_id: "{{item.vpc_id}}"
+  with_items:
+   - "{{ k8s_vpc_net_facts_results.vpcs }}"
+
+- name: Gather facts about default VPC IGW
+  ec2_vpc_igw_facts:
+    region: "{{ region }}"
+    filters:
+        "attachment.vpc-id": "{{ default_vpc_id }}"
+  register: default_igw_facts
+  
+- name: Gather facts about k8s VPC IGW
+  ec2_vpc_igw_facts:
+    region: "{{ region }}"
+    filters:
+        "attachment.vpc-id": "{{ k8s_vpc_id }}"
+  register: k8s_igw_facts
+
+- name: Default VPC IGW ID
+  set_fact: 
+   default_vpc_igw_id: "{{ default_igw_facts.internet_gateways[0].internet_gateway_id }}"
+
+- name: k8s VPC IGW ID
+  set_fact: 
+   k8s_vpc_igw_id: "{{ k8s_igw_facts.internet_gateways[0].internet_gateway_id }}"
+
+- name: Create local account VPC peering Connection
+  ec2_vpc_peer:
+   region: "{{ region }}"
+   vpc_id: "{{ k8s_vpc_id }}"
+   peer_vpc_id: "{{ default_vpc_id }}" 
+   state: present
+   tags:
+    peer-conn: k8-to-default-rds
+  register: vpc_peer
+
+- name: Accept local VPC peering request
+  ec2_vpc_peer:
+   region: "{{ region }}"
+   peering_id: "{{ vpc_peer.peering_id }}"
+   state: accept
+  register: action_peer
+
+- name: Lookup route tables in the k8s cluster VPC
+  ec2_vpc_route_table_facts:
+    region: "{{ region }}"
+    filters:
+      vpc-id: "{{ k8s_vpc_id }}"
+      "tag:kubernetes.io/kops/role": "public"
+  register: k8s_vpc_route_tables
+
+- debug:
+   msg: "Public k8s Route Table : {{ k8s_vpc_route_tables }}"
+
+- name: Lookup route tables in the default VPC
+  ec2_vpc_route_table_facts:
+    region: "{{ region }}"
+    filters:
+      vpc-id: "{{ default_vpc_id }}"
+  register: default_vpc_route_tables
+
+- name: Setup route for k8s cluster to talk to RDS in default VPC
+  ec2_vpc_route_table:
+    region: "{{ region }}"
+    vpc_id: "{{ k8s_vpc_id }}"
+    lookup: id
+    route_table_id: "{{ item.id }}"
+    routes:
+      - dest: "{{ default_vpc_net_facts_results.vpcs[0].cidr_block }}"
+        vpc_peering_connection_id: "{{ vpc_peer.peering_id }}"
+      - dest: 0.0.0.0/0
+        gateway_id: "{{ k8s_vpc_igw_id }}"
+  with_items:
+   - "{{ k8s_vpc_route_tables.route_tables }}"
+
+- name: Setup route for default VPC to communicate with k8s
+  ec2_vpc_route_table:
+    region: "{{ region }}"
+    vpc_id: "{{ default_vpc_id }}"
+    lookup: id
+    route_table_id: "{{ default_vpc_route_tables.route_tables[0].id }}"
+    routes:
+      - dest: "{{ k8s_vpc_net_facts_results.vpcs[0].cidr_block }}"
+        vpc_peering_connection_id: "{{ vpc_peer.peering_id }}"
+      - dest: 0.0.0.0/0
+        gateway_id: "{{ default_vpc_igw_id }}"

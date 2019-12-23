@@ -1,0 +1,16 @@
+- debug:
+   msg: "Starting Notebook to delete Prometheus and Grafana from the k8s cluster"
+
+- name: Command to delete namespace
+  shell: kubectl delete -f create_namespace.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Command to delete the Grafana releases and their records
+  shell: helm del --purge grafana
+
+- name: Command to delete the Prometheus releases and their records
+  shell: helm del --purge prometheus
+
+- name: Command to delete the elasticsearch-monitoring releases and their records
+  shell: helm del --purge elasticsearch-monitoring

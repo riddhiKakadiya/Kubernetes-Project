@@ -1,0 +1,19 @@
+---
+- name: Include external vars
+  include_vars:
+    file: vars/mysecrets.yaml
+    name: mysecrets
+
+- name: Installing fluentD cloudwatch
+  shell: "helm install --name fluentd \
+          -f values.yaml \
+          --namespace fluentd \
+          --set awsAccessKeyId={{ mysecrets.aws_access_key_id}} \
+          --set awsSecretAccessKey={{ mysecrets.aws_secret_access_key}} \
+          --set logGroupName=k8s \
+          --set rbac.create=true \
+          --set awsRegion={{ region }}
+          incubator/fluentd-cloudwatch
+          "
+  args:
+    chdir: "{{role_path}}/files"

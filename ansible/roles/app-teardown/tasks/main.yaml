@@ -1,0 +1,17 @@
+# Setup K8s cluster using kops
+- debug:
+     msg: "Starting Notebook to delete application in kubernetes"
+
+- name: Creating rbac roles
+  shell: kubectl delete -f rbac.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Command to delete namespace
+  shell: kubectl delete -f create_namespace.yaml
+  args:
+    chdir: "{{role_path}}/files"
+
+- name: Command to delete helm chart f19-t2-webapp-chart
+  shell: helm del --purge f19-t2-webapp-chart
+                                    

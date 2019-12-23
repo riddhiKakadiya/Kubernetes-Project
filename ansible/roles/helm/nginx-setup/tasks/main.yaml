@@ -1,0 +1,57 @@
+# Setup of ingress nginx controller
+- debug:
+     msg: "Starting Notebook to insatll nginx-ingress"
+
+- name: Install Nginx controller
+  shell: helm install --name ingress stable/nginx-ingress
+
+- name: Adding the repository
+  shell: helm repo add jetstack https://charts.jetstack.io
+
+- name: Creating namespace for cert-manager
+  shell: kubectl create namespace cert-manager
+
+- name: Change label to disable validation
+  shell: kubectl label namespace cert-manager certmanager.k8s.io/disable-validation=true
+
+- name: Apply cert manager manifest
+  shell: kubectl apply -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.10/deploy/manifests/00-crds.yaml
+
+- name: Install cert-manager with Helm and configure Let’s Encrypt as the default Certificate Authority (CA)
+  shell: helm install --name cert-manager --namespace cert-manager --version v0.10.0 jetstack/cert-manager --set ingressShim.defaultIssuerName=letsencrypt-prod --set ingressShim.defaultIssuerKind=ClusterIssuer
+  retries: 3
+  delay: 3
+  register: result
+  until: result.rc == 0
+
+- name: Verify that webhook pods from cert-manager is ready
+  shell: "kubectl get pods --selector=app=webhook --namespace=cert-manager -o jsonpath='{.items[0].status.phase}'"
+  register: cmd_result
+  until: cmd_result.stdout.find('Running') != -1
+  retries: 20
+  delay: 60
+
+- name: Apply the changes to the cluster by install helm chart
+  shell: |
+    helm install ./roles/helm/nginx-setup \
+    --name=f19-t2-nginx-chart \
+    --set letsencrypt.email={{letsencrypt_email}} \
+    --set nginx.domain={{nginx_domain_name}}
+
+- name: Verify that webhook pods from cert-manager is ready
+  shell: "kubectl get services ingress-nginx-ingress-controller -o jsonpath='{@.status.loadBalancer.ingress[0].hostname}'"
+  register: nginx_hostname
+
+- debug:
+     msg: "Nginx hostname is : {{ nginx_hostname.stdout }}"
+
+- name: Create the A record set for public Hosted zone
+  route53:
+    state: present
+    zone: "{{nginx_domain_name}}"
+    record: "{{nginx_domain_name}}"
+    type: A
+    overwrite: yes
+    value: "{{ nginx_hostname.stdout }}"
+    alias: True
+    alias_hosted_zone_id: "{{ dns_zone_id }}"

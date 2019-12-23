@@ -1,0 +1,67 @@
+podTemplate(
+    label: 'mypod', 
+    inheritFrom: 'default',
+    containers: [
+        containerTemplate(
+            name: 'docker', 
+            image: 'docker:18.02',
+            ttyEnabled: true,
+            command: 'cat'
+        ),
+        containerTemplate(
+            name: 'kubectl', 
+            image: 'lachlanevenson/k8s-kubectl:v1.8.8',
+            ttyEnabled: true,
+            command: 'cat'
+        )
+    ],
+    volumes: [
+        hostPathVolume(
+            hostPath: '/var/run/docker.sock',
+            mountPath: '/var/run/docker.sock'
+        )
+    ]
+) {
+    node('mypod') {
+        def registry
+        def commitId
+        def repository
+        stage('set variables') {
+            registry = "sreeragsreenath/f19-t2-webapp-backend"
+            registryCredential = 'dockerhub'
+            un_github = 'sreeragsreenath'
+            un_dockerhub = 'sreeragsreenath'
+            branch_github = 'assignment7'
+        }
+        
+        stage ('Extract') {
+            git branch: branch_github, credentialsId: 'github', url: 'https://github.com/'+un_github+'/f19-t2-webapp-backend.git'
+            commitId = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        }
+        
+        
+        
+        stage ('Docker Build') {
+            container('docker'){
+                // sh "docker build -t ${registry}:${commitId} ."
+                dockerImage = docker.build registry + ":${commitId}"
+                docker.withRegistry( '', registryCredential ) {
+                    dockerImage.push()
+                }
+            }
+        }
+        stage ('Docker Push') {
+            container('docker'){
+                docker.withRegistry( '', registryCredential ) {
+                    dockerImage.push()
+                }
+            }
+        }
+        
+        stage ('Deploy application') {
+            container('kubectl'){
+                sh "kubectl set image deployment/backend backend-app=${registry}:${commitId} --record --namespace=api"
+            }
+        }
+    }
+}

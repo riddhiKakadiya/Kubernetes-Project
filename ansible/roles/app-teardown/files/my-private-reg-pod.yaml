@@ -1,0 +1,148 @@
+
+
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: backend
+  labels:
+    app: backend-django
+  namespace: api
+spec:
+  # modify replicas according to your case
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp-backend
+  template:
+    metadata:
+      labels:
+        app: webapp-backend
+    spec:
+      containers:
+      - name: backend-app
+        imagePullPolicy: Always
+        image: sreeragsreenath/f19-t2-webapp-backend:latest
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8001
+        volumeMounts:
+        - mountPath: /cache
+          name: empty-dir-volume
+        env:
+        - name: DJANGO_PROFILE
+          value: "test"
+        - name: MARIADB_USERNAME
+          value: "root"
+        - name: MARIADB_PASSWORD
+          value: "Csye2019"
+        - name: MARIADB_HOST
+          value: "localhost"
+        - name: MARIADB_PORT
+          value: "32002"
+      imagePullSecrets:
+      - name: regcred
+      volumes:
+      - name: empty-dir-volume
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  namespace: api
+spec:
+  selector:
+    app: webapp-backend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8001
+    nodePort: 30038
+    targetPort: 8001
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: frontend
+  labels:
+    app: frontend-django
+  namespace: ui
+spec:
+  # modify replicas according to your case
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp-frontend
+  template:
+    metadata:
+      labels:
+        app: webapp-frontend
+    spec:
+      containers:
+      - name: frontend-app
+        imagePullPolicy: Always
+        image: sreeragsreenath/f19-t2-webapp-frontend:latest
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DJANGO_PROFILE
+          value: "local"
+        - name: BACKEND_API
+          value: "/v1/allrecipes"
+        - name: BACKEND_HOST
+          value: "api-service.api.svc.cluster.local"
+        - name: BACKEND_PORT
+          value: "8001"
+      imagePullSecrets:
+      - name: regcred
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+  namespace: ui
+spec:
+  selector:
+    app: webapp-frontend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    nodePort: 30039
+    targetPort: 8000
+  type: LoadBalancer
+
+
+# ---
+# # kind: Service
+# # apiVersion: v1
+# # metadata:
+# #   name: mysql-db-svc
+# #   namespace: external
+# # spec:
+# #   selector:
+# #     app: mysql-server
+# #   ports:
+# #   - protocol: TCP
+# #     port: 3306
+# #     targetPort: 3306
+# #     nodePort: 32002
+# #   type: NodePort
